@@ -1,0 +1,26 @@
+# env
+.env
+.env.local
+.env.prod
+
+# macOS
+.DS_Store
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# node
+node_modules/
+.next/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# airflow
+airflow/logs/
+airflow/plugins/__pycache__/
