@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: public
+    tables:
+      - name: raw_apt_trade
+      - name: raw_complex_info
+      - name: raw_address
+
+  - name: app
+    schema: public
+    tables:
+      - name: dim_destination

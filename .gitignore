@@ -3,6 +3,9 @@
 .env.local
 .env.prod
 
+# 실제 직장 좌표·예산 (개인정보) - config/profile.json.example 참고해서 로컬에 직접 만들 것
+config/profile.json
+
 # macOS
 .DS_Store
 

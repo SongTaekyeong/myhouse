@@ -1,0 +1,10 @@
+{
+  "destinations": [
+    { "dest_id": "me", "label": "본인 직장", "lat": 37.4979, "lng": 127.0276, "max_minutes": 50 },
+    { "dest_id": "spouse", "label": "배우자 직장", "lat": 37.5100, "lng": 127.1000, "max_minutes": 40 }
+  ],
+  "budget_cap": 1200000000,
+  "min_households": 500,
+  "area_group": "25-30",
+  "weights": { "commute": 0.4, "price": 0.35, "households": 0.25 }
+}

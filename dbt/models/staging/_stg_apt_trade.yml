@@ -1,0 +1,12 @@
+version: 2
+
+models:
+  - name: stg_apt_trade
+    columns:
+      - name: raw_id
+        data_tests:
+          - unique
+          - not_null
+      - name: deal_amount_krw
+        data_tests:
+          - not_null

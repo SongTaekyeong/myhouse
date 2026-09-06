@@ -18,7 +18,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.local}
       POSTGRES_DB: ${POSTGRES_DB:-naejip}
     ports:
-      - "5432:5432"
+      # 5433: 이 컴퓨터에 이미 네이티브 postgres가 5432를 쓰고 있어서 충돌 회피
+      - "5433:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -55,10 +56,15 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY}
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_WEBSERVER_SECRET_KEY}
+      # pipeline/ingest/*.py 가 컨테이너 안에서는 postgres 서비스명 + 내부 포트로 접속하도록
+      # (.env.local의 5433은 호스트 전용 매핑 포트라 컨테이너 내부에서는 안 맞음)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./pipeline:/opt/airflow/pipeline
       - ./dbt:/opt/airflow/dbt
+      - ./.env.local:/opt/airflow/.env.local:ro
       - airflow_logs:/opt/airflow/logs
     entrypoint: /bin/bash
     command:
@@ -85,6 +91,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./pipeline:/opt/airflow/pipeline
       - ./dbt:/opt/airflow/dbt
+      - ./.env.local:/opt/airflow/.env.local:ro
       - airflow_logs:/opt/airflow/logs
     command: webserver
 
@@ -100,6 +107,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./pipeline:/opt/airflow/pipeline
       - ./dbt:/opt/airflow/dbt
+      - ./.env.local:/opt/airflow/.env.local:ro
       - airflow_logs:/opt/airflow/logs
     command: scheduler
 

@@ -1,0 +1,18 @@
+name: 'naejip'
+version: '1.0.0'
+config-version: 2
+
+profile: 'naejip'
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+
+models:
+  naejip:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: table
+    mart:
+      +materialized: table
