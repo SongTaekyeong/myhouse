@@ -19,9 +19,6 @@ def parse_apt_trade(xml_text):
     root = ET.fromstring(xml_text)
     items = root.findall(".//item")
 
-    one_item = items[0]
-    value = one_item.find("aptNm").text
-
     records = []
     for item in items:
         record = {

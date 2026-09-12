@@ -2,6 +2,7 @@ with complex_parsed as (
     select
         kapt_code,
         kapt_name,
+        left(bjd_code, 5) as sgg_cd,
         split_part(kapt_addr, ' ', 3) as umd_nm,
         split_part(kapt_addr, ' ', 4) as jibun
         from {{ ref('stg_complex_info') }}
@@ -21,5 +22,6 @@ select
     trade_keys.jibun
 from complex_parsed
 join trade_keys
-    on complex_parsed.umd_nm = trade_keys.umd_nm
+    on complex_parsed.sgg_cd = trade_keys.sgg_cd
+    and complex_parsed.umd_nm = trade_keys.umd_nm
     and complex_parsed.jibun = trade_keys.jibun

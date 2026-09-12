@@ -9,6 +9,9 @@ config/profile.json
 # macOS
 .DS_Store
 
+# claude code local state
+.claude/
+
 # python
 __pycache__/
 *.pyc
