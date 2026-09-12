@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { fetchComplexes, fetchProfile, saveProfile, AREA_GROUPS, type ComplexItem, type Profile } from '@/lib/api';
 import { computeScore, recomputeForBudget, type Weights } from '@/lib/score';
 import WeightPanel from '@/components/WeightPanel';
+import ListPanel from '@/components/ListPanel';
 
 // 카카오맵은 브라우저 SDK를 로드하므로 서버 렌더링 대상에서 제외 (CLAUDE.md).
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
@@ -20,6 +21,7 @@ export default function Home() {
   const [areaGroup, setAreaGroup] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [focus, setFocus] = useState<{ id: string; nonce: number } | null>(null);
   const skipNextSave = useRef(true);
 
   useEffect(() => {
@@ -153,7 +155,13 @@ export default function Home() {
         />
       )}
 
-      <Map complexes={complexes} destinations={profile?.destinations ?? []} />
+      <Map complexes={complexes} destinations={profile?.destinations ?? []} focus={focus} />
+
+      <ListPanel
+        complexes={complexes}
+        selectedId={focus?.id ?? null}
+        onSelect={(id) => setFocus({ id, nonce: Date.now() })}
+      />
     </div>
   );
 }

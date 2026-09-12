@@ -11,6 +11,7 @@ const SONGPA_CENTER = { lat: 37.5145, lng: 127.1059 }; // 송파구 중심 근�
 interface MapProps {
   complexes: ComplexItem[];
   destinations: Destination[];
+  focus?: { id: string; nonce: number } | null;
 }
 
 function buildBadge(item: ComplexItem): HTMLDivElement {
@@ -104,11 +105,38 @@ function buildInfoCard(item: ComplexItem, destinations: Destination[]): HTMLDivE
   return card;
 }
 
-export default function Map({ complexes, destinations }: MapProps) {
+export default function Map({ complexes, destinations, focus }: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<kakao.maps.Map | null>(null);
   const markerOverlaysRef = useRef<kakao.maps.CustomOverlay[]>([]);
   const infoOverlayRef = useRef<kakao.maps.CustomOverlay | null>(null);
+  const itemsByIdRef = useRef<Record<string, { item: ComplexItem; position: kakao.maps.LatLng }>>({});
+  const destinationsRef = useRef<Destination[]>(destinations);
+  useEffect(() => {
+    destinationsRef.current = destinations;
+  }, [destinations]);
+
+  function openInfoCard(item: ComplexItem, position: kakao.maps.LatLng) {
+    const map = mapRef.current;
+    if (!map) return;
+
+    infoOverlayRef.current?.setMap(null);
+
+    const card = buildInfoCard(item, destinationsRef.current);
+    const infoOverlay = new window.kakao.maps.CustomOverlay({
+      position,
+      content: card,
+      map,
+      yAnchor: 1.25,
+      zIndex: 100,
+    });
+
+    card.querySelector('button')?.addEventListener('click', () => {
+      infoOverlay.setMap(null);
+    });
+
+    infoOverlayRef.current = infoOverlay;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -136,38 +164,38 @@ export default function Map({ complexes, destinations }: MapProps) {
     infoOverlayRef.current = null;
 
     const shown = complexes.filter((c) => c.excluded_by.length === 0);
+    itemsByIdRef.current = {};
 
     for (const item of shown) {
       const position = new window.kakao.maps.LatLng(item.lat, item.lng);
+      itemsByIdRef.current[item.complex_id] = { item, position };
       const badge = buildBadge(item);
 
-      badge.addEventListener('click', () => {
-        infoOverlayRef.current?.setMap(null);
-
-        const card = buildInfoCard(item, destinations);
-        const infoOverlay = new window.kakao.maps.CustomOverlay({
-          position,
-          content: card,
-          map,
-          yAnchor: 1.25,
-        });
-
-        card.querySelector('button')?.addEventListener('click', () => {
-          infoOverlay.setMap(null);
-        });
-
-        infoOverlayRef.current = infoOverlay;
-      });
+      badge.addEventListener('click', () => openInfoCard(item, position));
 
       const markerOverlay = new window.kakao.maps.CustomOverlay({
         position,
         content: badge,
         map,
         yAnchor: 0.5,
+        zIndex: 1,
       });
       markerOverlaysRef.current.push(markerOverlay);
     }
-  }, [complexes, destinations]);
+  }, [complexes]);
+
+  useEffect(() => {
+    if (!focus || !mapRef.current) return;
+    const entry = itemsByIdRef.current[focus.id];
+    if (!entry) return;
+
+    const map = mapRef.current;
+    // 도심 전체 줌(레벨 7)에서는 마커가 붙어 있어 카드가 다른 단지 배지와 겹쳐 보인다.
+    // 선택한 단지가 확실히 분리되도록 충분히 당겨서 본다 (이미 더 당겨져 있으면 유지).
+    map.setLevel(Math.min(map.getLevel(), 4));
+    map.panTo(entry.position);
+    openInfoCard(entry.item, entry.position);
+  }, [focus]);
 
   return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
 }

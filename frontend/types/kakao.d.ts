@@ -8,6 +8,9 @@ declare namespace kakao.maps {
   class Map {
     constructor(container: HTMLElement, options: { center: LatLng; level: number });
     setCenter(latlng: LatLng): void;
+    panTo(latlng: LatLng): void;
+    setLevel(level: number): void;
+    getLevel(): number;
   }
 
   class Marker {
@@ -33,6 +36,7 @@ declare namespace kakao.maps {
       content: HTMLElement | string;
       map?: Map;
       yAnchor?: number;
+      zIndex?: number;
     });
     setMap(map: Map | null): void;
   }
