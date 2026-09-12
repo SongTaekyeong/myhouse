@@ -34,7 +34,9 @@
 | 통근 | **직선거리 추정** (외부 경로 API 안 씀) | `mart_commute` 계산 방식만 교체 |
 | 단지 수 | 약 200개 | — |
 
-**의도적으로 뺀 것**: 학구도/초품아 · 지하철 · 전세가율 · 저장/비교함 · 온보딩 위저드 · 실거래 추이 차트 · 청약 정보 · 호가 크롤링
+**의도적으로 뺀 것**: 학구도/초품아 · 지하철 · 전세가율 · 저장/비교함 · 실거래 추이 차트 · 청약 정보 · 호가 크롤링
+
+> 온보딩 화면은 2026-09-12 결정으로 범위에 포함됐다 (§7, §9 참고). 다회원·다프로필은 여전히 범위 밖 — 화이트리스트 계정 전체가 프로필 하나를 공유한다.
 
 ## 3. 아키텍처
 
@@ -127,11 +129,17 @@ est_minutes = (distance_km / 25.0) * 60 + 10
 ### 앱 소유 테이블 (dbt가 건드리지 않음)
 `profiles` · `dim_destination` · `users`
 
+### `profiles`
+싱글턴(항상 `id = 'default'` 한 행만 존재 — 화이트리스트 계정 전체가 이 프로필 하나를 공유, 다회원 아님)
+
+`id` PK(고정값 `'default'`) · `budget_cap` · `min_households` · `area_group` · `weights jsonb` · `updated_at`
+
 ## 7. 스코어링
 
-`config/profile.json`으로 조건을 준다. 온보딩 화면은 만들지 않는다.
+조건은 `profiles` 테이블(싱글턴) + `dim_destination`에서 읽는다. `config/profile.json`은 **`profiles`에 아직 행이 없을 때 온보딩 화면이 보여줄 기본값**으로만 쓴다(시드 성격, 실제 서빙엔 안 씀).
 
 ```jsonc
+// config/profile.json — 온보딩 기본값 예시
 {
   "destinations": [
     { "dest_id": "me",     "label": "본인 직장",   "lat": 37.4979, "lng": 127.0276, "max_minutes": 50 },
@@ -166,7 +174,8 @@ est_minutes = (distance_km / 25.0) * 60 + 10
 ```
 GET  /api/complexes            전체 목록 + 점수 + components + excluded_by
 GET  /api/complexes/{id}       단지 상세 + mart_price 최근 24개월
-GET  /api/profile              config/profile.json
+GET  /api/profile              profiles 싱글턴 (없으면 config/profile.json 기본값 반환, has_profile: false)
+POST /api/profile              온보딩/설정 저장 → profiles 싱글턴 upsert (budget_cap, min_households, area_group, weights)
 POST /api/destinations         직장 등록 → dim_destination (다음 파이프라인 실행 때 반영)
 GET  /api/health               인증 예외
 ```
@@ -174,14 +183,21 @@ GET  /api/health               인증 예외
 단지 200개라 bbox 쿼리·페이지네이션 없이 전체를 한 번에 내려준다.
 `mart_commute`에 해당 `dest_id` 행이 아직 없으면 `commute_status: "pending"`으로 응답.
 
-## 9. 화면 (1개)
+## 9. 화면 (2개)
 
-`/` — 지도 하나. 데스크톱 우선.
+### `/onboarding` — 최초 설정 + 재설정
+`GET /api/profile`이 `has_profile: false`를 반환하면(=`profiles`에 행이 없으면) 지도 화면 대신 이 화면으로 보낸다. 지도 화면 상단바의 "설정" 링크로 **언제든 다시 들어와 값을 고칠 수도 있다** — 이 경우 기존 값을 미리 채워서 보여준다.
+
+- 입력: 목적지(주소 검색 → 카카오 Geocoder로 좌표 변환, 목적지별 허용 통근시간), 예산 상한, 최소 세대수, 관심 평형
+- 저장 순서: 목적지는 `POST /api/destinations`, 나머지는 `POST /api/profile` → 완료되면 `/`로 이동
+- 가중치(3개 슬라이더)만 지도 화면 좌측 하단에서 바로 조정 가능 — 나머지 항목은 이 화면에서
+
+### `/` — 지도. 데스크톱 우선.
 
 - 카카오맵, 초기 중심 송파구 (`dynamic import`, `ssr: false`)
 - 마커 색상: 85+ 진초록 / 70+ 연초록 / 55+ 노랑 / 이하 회색, 점수 숫자 표시
-- 마커 클릭 → 인포윈도우: 단지명, 점수, 항목별 기여도 3줄, 세대수, 준공년, 중위가, 목적지별 예상 이동시간
-- 좌측 하단: 가중치 슬라이더 3개 + 예산 입력 → 즉시 재채색
+- 마커 클릭 → 인포윈도우: 단지명, 점수, 항목별 점수(통근/가격/세대수) 3줄, 세대수, 준공년, 중위가, 목적지별 예상 이동시간
+- 좌측 하단: 가중치 슬라이더 3개(항목별 설명 툴팁 포함) + 예산 입력 → 즉시 재채색
 - 상단: "표시 43 · 제외 128", 평형 드롭다운
 
 ## 10. 인증

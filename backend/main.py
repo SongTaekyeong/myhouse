@@ -22,14 +22,37 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
 
-def load_profile() -> dict:
+def load_default_profile() -> dict:
+    """profiles 테이블에 아직 행이 없을 때(=온보딩 전) 보여줄 기본값."""
     with open(PROFILE_PATH, encoding="utf-8") as f:
         return json.load(f)
+
+
+def load_profile(session: Session) -> tuple[dict, bool]:
+    """(profile, has_profile) 반환. has_profile=False면 config/profile.json 기본값."""
+    row = session.execute(
+        text("SELECT budget_cap, min_households, area_group, weights FROM profiles WHERE id = 'default'")
+    ).mappings().first()
+
+    if row is None:
+        return load_default_profile(), False
+
+    dest_rows = session.execute(
+        text("SELECT dest_id, label, lat::float AS lat, lng::float AS lng, max_minutes FROM dim_destination")
+    ).mappings().all()
+
+    return {
+        "budget_cap": row["budget_cap"],
+        "min_households": row["min_households"],
+        "area_group": row["area_group"],
+        "weights": row["weights"],
+        "destinations": [dict(d) for d in dest_rows],
+    }, True
 
 
 @app.get("/api/health")
@@ -38,8 +61,45 @@ def health():
 
 
 @app.get("/api/profile")
-def get_profile(_: str = Depends(require_session)):
-    return load_profile()
+def get_profile(
+    _: str = Depends(require_session),
+    session: Session = Depends(get_app_session),
+):
+    profile, has_profile = load_profile(session)
+    return {**profile, "has_profile": has_profile}
+
+
+@app.post("/api/profile")
+def save_profile(
+    payload: dict,
+    _: str = Depends(require_session),
+    session: Session = Depends(get_app_session),
+):
+    required = {"budget_cap", "min_households", "area_group", "weights"}
+    missing = required - payload.keys()
+    if missing:
+        raise HTTPException(status_code=422, detail=f"필수 필드 누락: {missing}")
+
+    session.execute(
+        text("""
+            INSERT INTO profiles (id, budget_cap, min_households, area_group, weights, updated_at)
+            VALUES ('default', :budget_cap, :min_households, :area_group, CAST(:weights AS jsonb), now())
+            ON CONFLICT (id) DO UPDATE SET
+                budget_cap = EXCLUDED.budget_cap,
+                min_households = EXCLUDED.min_households,
+                area_group = EXCLUDED.area_group,
+                weights = EXCLUDED.weights,
+                updated_at = now()
+        """),
+        {
+            "budget_cap": payload["budget_cap"],
+            "min_households": payload["min_households"],
+            "area_group": payload["area_group"],
+            "weights": json.dumps(payload["weights"]),
+        },
+    )
+    session.commit()
+    return {"status": "ok"}
 
 
 @app.get("/api/complexes")
@@ -47,8 +107,9 @@ def list_complexes(
     area_group: str | None = None,
     _: str = Depends(require_session),
     session: Session = Depends(get_mart_session),
+    app_session: Session = Depends(get_app_session),
 ):
-    profile = load_profile()
+    profile, _has_profile = load_profile(app_session)
     area_group = area_group or profile["area_group"]
     dest_ids = [d["dest_id"] for d in profile["destinations"]]
 
@@ -179,5 +240,16 @@ def add_destination(
         """),
         payload,
     )
+    session.commit()
+    return {"status": "ok"}
+
+
+@app.delete("/api/destinations/{dest_id}")
+def delete_destination(
+    dest_id: str,
+    _: str = Depends(require_session),
+    session: Session = Depends(get_app_session),
+):
+    session.execute(text("DELETE FROM dim_destination WHERE dest_id = :dest_id"), {"dest_id": dest_id})
     session.commit()
     return {"status": "ok"}

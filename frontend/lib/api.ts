@@ -32,12 +32,26 @@ export interface Destination {
   max_minutes: number;
 }
 
+export interface Weights {
+  commute: number;
+  price: number;
+  households: number;
+}
+
 export interface Profile {
   destinations: Destination[];
   budget_cap: number;
   min_households: number;
   area_group: string;
-  weights: { commute: number; price: number; households: number };
+  weights: Weights;
+  has_profile: boolean;
+}
+
+export interface ProfileSettings {
+  budget_cap: number;
+  min_households: number;
+  area_group: string;
+  weights: Weights;
 }
 
 // 브라우저는 항상 같은 origin의 Next.js 라우트 핸들러(/api/...)만 호출한다.
@@ -63,4 +77,24 @@ export const AREA_GROUPS = ['~20', '20-25', '25-30', '30-40', '40~'] as const;
 
 export function fetchProfile(): Promise<Profile> {
   return apiFetch<Profile>('/api/profile');
+}
+
+export function saveProfile(settings: ProfileSettings): Promise<{ status: string }> {
+  return apiFetch('/api/profile', {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  });
+}
+
+export function saveDestination(dest: Destination): Promise<{ status: string }> {
+  return apiFetch('/api/destinations', {
+    method: 'POST',
+    body: JSON.stringify(dest),
+  });
+}
+
+export function deleteDestination(destId: string): Promise<{ status: string }> {
+  return apiFetch(`/api/destinations/${encodeURIComponent(destId)}`, {
+    method: 'DELETE',
+  });
 }

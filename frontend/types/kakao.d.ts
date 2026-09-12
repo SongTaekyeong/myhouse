@@ -52,6 +52,35 @@ declare namespace kakao.maps {
   }
 
   function load(callback: () => void): void;
+
+  namespace services {
+    interface AddressSearchResult {
+      address_name: string;
+      x: string; // 경도
+      y: string; // 위도
+    }
+
+    type StatusType = 'OK' | 'ZERO_RESULT' | 'ERROR';
+
+    const Status: { OK: 'OK'; ZERO_RESULT: 'ZERO_RESULT'; ERROR: 'ERROR' };
+
+    interface Coord2AddressResult {
+      address: { address_name: string } | null;
+      road_address: { address_name: string } | null;
+    }
+
+    class Geocoder {
+      addressSearch(
+        address: string,
+        callback: (result: AddressSearchResult[], status: StatusType) => void
+      ): void;
+      coord2Address(
+        lng: number,
+        lat: number,
+        callback: (result: Coord2AddressResult[], status: StatusType) => void
+      ): void;
+    }
+  }
 }
 
 interface Window {

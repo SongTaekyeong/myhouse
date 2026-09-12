@@ -4,27 +4,13 @@ import { useEffect, useRef } from 'react';
 import type { ComplexItem, Destination } from '@/lib/api';
 import { scoreColor } from '@/lib/score';
 import { formatPriceKrw, formatBuiltYm, formatMinutes } from '@/lib/format';
+import { loadKakaoSdk } from '@/lib/kakao';
 
-const KAKAO_JS_KEY = process.env.NEXT_PUBLIC_KAKAO_JS_KEY ?? '';
 const SONGPA_CENTER = { lat: 37.5145, lng: 127.1059 }; // 송파구 중심 근사값
 
 interface MapProps {
   complexes: ComplexItem[];
   destinations: Destination[];
-}
-
-function loadKakaoSdk(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.kakao?.maps) {
-      resolve();
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_JS_KEY}&autoload=false`;
-    script.onload = () => window.kakao.maps.load(() => resolve());
-    script.onerror = () => reject(new Error('카카오맵 SDK 로드 실패'));
-    document.head.appendChild(script);
-  });
 }
 
 function buildBadge(item: ComplexItem): HTMLDivElement {
@@ -41,41 +27,79 @@ function buildBadge(item: ComplexItem): HTMLDivElement {
   return badge;
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+}
+
+const COMPONENT_LABELS = { commute: '통근 점수', price: '가격 점수', households: '세대수 점수' } as const;
+
 function buildInfoCard(item: ComplexItem, destinations: Destination[]): HTMLDivElement {
   const price = item.price_recent !== null ? `${formatPriceKrw(item.price_recent)}원` : '거래 없음';
+  const color = scoreColor(item.score);
 
-  const commuteLines = destinations
-    .map((d) => `<div>${d.label}: ${formatMinutes(item.commutes[d.dest_id])}</div>`)
-    .join('');
-
-  const labels = { commute: '통근', price: '가격', households: '세대수' } as const;
-  const componentLines = (Object.keys(labels) as (keyof typeof labels)[])
+  const componentRows = (Object.keys(COMPONENT_LABELS) as (keyof typeof COMPONENT_LABELS)[])
     .map((k) => {
       const v = item.components[k];
-      return `<div>${labels[k]} 기여도: ${v === null ? '—' : Math.round(v * 100) + '점'}</div>`;
+      const pct = v === null ? 0 : Math.round(v * 100);
+      return `
+        <div class="flex items-center gap-2 py-0.5">
+          <span class="w-16 shrink-0 text-[11px] text-gray-500">${COMPONENT_LABELS[k]}</span>
+          <span class="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+            <span class="block h-full rounded-full" style="width:${pct}%;background:${v === null ? '#d1d5db' : color}"></span>
+          </span>
+          <span class="w-7 shrink-0 text-right text-[11px] font-semibold tabular-nums text-gray-700">${v === null ? '—' : pct}</span>
+        </div>
+      `;
+    })
+    .join('');
+
+  const commuteRows = destinations
+    .map((d) => {
+      const min = item.commutes[d.dest_id];
+      return `
+        <div class="flex items-center justify-between py-0.5 text-xs">
+          <span class="text-gray-500">${escapeHtml(d.label)}</span>
+          <span class="font-semibold tabular-nums text-gray-800">${formatMinutes(min)}</span>
+        </div>
+      `;
     })
     .join('');
 
   const card = document.createElement('div');
-  card.style.cssText = `
-    background:white;color:#111827;border-radius:8px;padding:10px 14px 12px;
-    font-size:13px;line-height:1.55;min-width:200px;
-    box-shadow:0 4px 16px rgba(0,0,0,0.2);position:relative;
-    color-scheme:light;
-  `;
+  card.style.cssText = `color-scheme:light;box-shadow:0 8px 24px rgba(0,0,0,0.18);`;
+  card.className = 'relative w-64 rounded-2xl bg-white p-4 text-gray-900 ring-1 ring-black/5';
   card.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;">
-      <div style="font-weight:700;font-size:14px;">${item.name}</div>
-      <button style="border:none;background:none;cursor:pointer;font-size:14px;color:#888;line-height:1;" aria-label="닫기">✕</button>
+    <div class="flex items-start justify-between gap-2">
+      <div class="text-[15px] font-bold leading-snug text-gray-900">${escapeHtml(item.name)}</div>
+      <button
+        class="grid h-6 w-6 shrink-0 place-items-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+        aria-label="닫기"
+      >✕</button>
     </div>
-    <div style="font-weight:600;color:${scoreColor(item.score)};margin:2px 0 6px;">
-      점수 ${item.score !== null ? Math.round(item.score) : '—'}
+
+    <div class="mt-2 flex items-center gap-2">
+      <span
+        class="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white"
+        style="background:${color}"
+      >${item.score !== null ? Math.round(item.score) : '–'}</span>
+      <div class="text-xs text-gray-500">
+        종합 점수
+        <div class="text-[11px] text-gray-400">가중치 슬라이더로 즉시 재계산돼요</div>
+      </div>
     </div>
-    ${componentLines}
-    <div style="margin-top:6px;">세대수: ${item.total_households.toLocaleString()}세대</div>
-    <div>준공: ${formatBuiltYm(item.built_ym)}</div>
-    <div>중위가: ${price}</div>
-    <div style="margin-top:6px;">${commuteLines}</div>
+
+    <div class="my-3 space-y-1 border-y border-gray-100 py-3">${componentRows}</div>
+
+    <div class="grid grid-cols-2 gap-y-1 text-xs">
+      <span class="text-gray-500">세대수</span>
+      <span class="text-right font-medium tabular-nums text-gray-800">${item.total_households.toLocaleString()}세대</span>
+      <span class="text-gray-500">준공</span>
+      <span class="text-right font-medium text-gray-800">${formatBuiltYm(item.built_ym)}</span>
+      <span class="text-gray-500">중위가</span>
+      <span class="text-right font-medium tabular-nums text-gray-800">${price}</span>
+    </div>
+
+    ${commuteRows ? `<div class="mt-3 space-y-0.5 border-t border-gray-100 pt-3">${commuteRows}</div>` : ''}
   `;
   return card;
 }
