@@ -6,7 +6,7 @@ def fetch_sigungu_apt_list(sigungu_code):
         "sigunguCode": sigungu_code, 
         "pageNo": 1,
         "serviceKey": os.getenv("DATA_GO_KR_SERVICE_KEY"),
-        "numOfRows": 200,
+        "numOfRows": 1000,  # 200으로는 233개인 강남구가 잘렸음(첫 페이지만 반환) — 여유있게 올림
     }
     response = requests.get("https://apis.data.go.kr/1613000/AptListService4/getSigunguAptList4", params=params)
     return response.json()
@@ -114,10 +114,14 @@ def save_records(conn, records):
 
 
 if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from regions import load_region_codes
+
     conn = get_connection()
     create_table(conn)
 
-    for sigungu_code in ["11710", "11740"]:
+    for sigungu_code in load_region_codes():
         list_json = fetch_sigungu_apt_list(sigungu_code)
         kapt_codes = extract_kapt_codes(list_json)
 

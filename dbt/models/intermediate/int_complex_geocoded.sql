@@ -14,5 +14,5 @@ select
         else 'medium'
     end as match_confidence
 from {{ ref('int_complex_key') }}
-left join {{ source('raw', 'raw_address') }}
+left join {{ ref('stg_address') }} as raw_address
     on int_complex_key.complex_id = raw_address.kapt_code

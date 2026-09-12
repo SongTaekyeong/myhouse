@@ -45,7 +45,10 @@ services:
       retries: 5
 
   airflow-init:
-    image: apache/airflow:2.9.3
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    image: naejip-airflow:2.9.3
     container_name: naejip-airflow-init
     depends_on:
       airflow-postgres:
@@ -60,10 +63,14 @@ services:
       # (.env.local의 5433은 호스트 전용 매핑 포트라 컨테이너 내부에서는 안 맞음)
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DBT_PROFILES_DIR: /opt/airflow/dbt_profiles
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./pipeline:/opt/airflow/pipeline
       - ./dbt:/opt/airflow/dbt
+      - ./airflow/dbt_profiles.yml:/opt/airflow/dbt_profiles/profiles.yml:ro
+      - ./config:/opt/airflow/config:ro
       - ./.env.local:/opt/airflow/.env.local:ro
       - airflow_logs:/opt/airflow/logs
     entrypoint: /bin/bash
@@ -78,7 +85,10 @@ services:
           --role Admin --email admin@example.com || true
 
   airflow-webserver:
-    image: apache/airflow:2.9.3
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    image: naejip-airflow:2.9.3
     container_name: naejip-airflow-webserver
     restart: unless-stopped
     depends_on:
@@ -91,12 +101,17 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./pipeline:/opt/airflow/pipeline
       - ./dbt:/opt/airflow/dbt
+      - ./airflow/dbt_profiles.yml:/opt/airflow/dbt_profiles/profiles.yml:ro
+      - ./config:/opt/airflow/config:ro
       - ./.env.local:/opt/airflow/.env.local:ro
       - airflow_logs:/opt/airflow/logs
     command: webserver
 
   airflow-scheduler:
-    image: apache/airflow:2.9.3
+    build:
+      context: .
+      dockerfile: airflow/Dockerfile
+    image: naejip-airflow:2.9.3
     container_name: naejip-airflow-scheduler
     restart: unless-stopped
     depends_on:
@@ -107,6 +122,8 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./pipeline:/opt/airflow/pipeline
       - ./dbt:/opt/airflow/dbt
+      - ./airflow/dbt_profiles.yml:/opt/airflow/dbt_profiles/profiles.yml:ro
+      - ./config:/opt/airflow/config:ro
       - ./.env.local:/opt/airflow/.env.local:ro
       - airflow_logs:/opt/airflow/logs
     command: scheduler

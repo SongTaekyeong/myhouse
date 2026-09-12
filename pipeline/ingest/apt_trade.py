@@ -138,26 +138,29 @@ def save_records(conn, records):
     print(f"{len(records)}건 적재 완료")
 
 if __name__ == "__main__":
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+    from regions import load_region_codes
+
     conn = get_connection()
     create_table(conn)
 
-    year = 2026
-    month = 8
+    today = datetime.date.today()
 
-    for i in range(60):
-        deal_ymd = f"{year}{month:02d}"
-        print(deal_ymd) # 확인용
+    for sgg_cd in load_region_codes():
+        year, month = today.year, today.month
+        for i in range(60):  # 백필용 — 신규 지역 추가 시 전체 기간 채움
+            deal_ymd = f"{year}{month:02d}"
+            print(sgg_cd, deal_ymd)  # 확인용
 
-        # xml_text = fetch_apt_trade("11710", deal_ymd)#송파구
-        xml_text = fetch_apt_trade("11740", deal_ymd) #강동구
-        records = parse_apt_trade(xml_text)
-        save_records(conn, records)
-    
+            xml_text = fetch_apt_trade(sgg_cd, deal_ymd)
+            records = parse_apt_trade(xml_text)
+            save_records(conn, records)
 
-        month -= 1
-        if month == 0:
-            month = 12
-            year -= 1
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
 
 
 

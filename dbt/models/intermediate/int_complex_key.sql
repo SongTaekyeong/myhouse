@@ -4,7 +4,8 @@ with complex_parsed as (
         kapt_name,
         split_part(kapt_addr, ' ', 3) as umd_nm,
         split_part(kapt_addr, ' ', 4) as jibun
-    from {{ source('raw', 'raw_complex_info') }}
+        from {{ ref('stg_complex_info') }}
+
 ),
 
 trade_keys as (

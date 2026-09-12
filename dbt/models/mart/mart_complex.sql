@@ -12,5 +12,5 @@ select
     rci.kapt_dong_cnt::integer as total_dongs,
     now() as updated_at
 from {{ ref('int_complex_geocoded') }} icg
-join {{ source('raw', 'raw_complex_info') }} rci
+join {{ ref('stg_complex_info') }} rci
     on icg.complex_id = rci.kapt_code
