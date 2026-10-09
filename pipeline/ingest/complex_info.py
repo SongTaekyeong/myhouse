@@ -50,7 +50,6 @@ from dotenv import load_dotenv ## db연결용 환경변수 가져오기
 import os
 
 load_dotenv(".env.local")
-print(os.getenv("POSTGRES_PASSWORD"))
 
 import psycopg2 ## db연결!!!
 
