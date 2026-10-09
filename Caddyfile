@@ -1,0 +1,13 @@
+{$DOMAIN} {
+	# Let's Encrypt 인증서 자동 발급/갱신. 도메인의 A 레코드가 이 VM IP를
+	# 가리키고 있어야 하고, 80/443 포트가 방화벽에서 열려 있어야 한다.
+	reverse_proxy frontend:3000
+
+	encode gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+	}
+}

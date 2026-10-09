@@ -296,6 +296,6 @@ naejip/
 
 ## 16. 남은 결정 (🔺)
 
-1. VM 제공자 (Oracle Free vs Lightsail) 및 도메인
-2. 백필 기간 — 24개월 vs 36개월
-3. Airflow를 나중에 VM으로 올릴지 여부
+1. ~~VM 제공자~~ → **2026-09-13 결정: Oracle Cloud Free Tier.** 계정 이슈로 생성이 막히면 AWS Lightsail($5~10/월)로 전환. 도메인은 별도 구매 필요 (미정)
+2. 백필 기간 — 24개월 vs 36개월 (현재 실질적으로 60개월 백필 중)
+3. ~~Airflow를 나중에 VM으로 올릴지 여부~~ → **2026-09-13 결정: 로컬 PC에만 둔다.** 운영 VM은 caddy/frontend/backend/postgres만 돈다 (docker-compose.prod.yml). `pipeline/scripts/sync_mart.sh`로 `mart_*`만 밀어넣음 — data.go.kr/카카오 REST 키가 운영 서버에 올라가지 않는 장점도 있음
