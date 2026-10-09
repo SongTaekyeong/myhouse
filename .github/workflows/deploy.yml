@@ -1,15 +1,18 @@
-# main 브랜치 푸시 -> backend/frontend 이미지 빌드 & GHCR에 push -> VM에서 pull & up.
+# backend/frontend 이미지 빌드 & GHCR에 push -> VM에서 pull & up.
 # 필요한 GitHub Secrets (repo Settings > Secrets and variables > Actions):
 #   NEXT_PUBLIC_KAKAO_JS_KEY  - 프론트 빌드에 박아 넣을 카카오맵 JS 키
 #   SSH_HOST                 - VM 공인 IP 또는 도메인
 #   SSH_USER                 - VM 접속 계정
 #   SSH_PRIVATE_KEY          - 그 계정의 배포 전용 SSH 개인키
 #   DEPLOY_PATH              - VM에서 이 저장소를 clone해둔 절대경로 (예: /home/ubuntu/naejip)
+#
+# 트리거를 일부러 수동(workflow_dispatch)으로 둠: VM이 아직 없어서 push마다
+# 돌리면 SSH 단계에서 매번 실패해 저장소 메인 화면에 빨간 배지가 뜸.
+# VM을 띄우고 Secrets를 다 채운 뒤 `on: push: branches: [main]`으로 되돌릴 것.
 name: Deploy
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
